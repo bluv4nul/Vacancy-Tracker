@@ -2,11 +2,9 @@
   "name": "vacancy-tracker",
   "version": "1.0.0",
   "description": "vacancy tracker JS+Express+PostgreSQL",
-  "license": "ISC",
+  "license": "MIT",
   "author": "Andrew Frolov (bluv4nul)",
   "type": "module",
-  "main": "vacancy-tracker.js",
-  "scripts": {
-    "test": "test"
-  }
+  "scripts": {},
+  "private": true
 }
