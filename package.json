@@ -5,7 +5,6 @@
   "license": "MIT",
   "author": "Andrew Frolov (bluv4nul)",
   "type": "module",
-  "main": "server.js",
   "scripts": {},
   "private": "true"
 }
