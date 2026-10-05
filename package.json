@@ -6,5 +6,5 @@
   "author": "Andrew Frolov (bluv4nul)",
   "type": "module",
   "scripts": {},
-  "private": "true"
+  "private": true
 }
