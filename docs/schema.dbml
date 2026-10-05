@@ -1,0 +1,124 @@
+// Трекер вакансий — схема БД (PostgreSQL)
+
+Enum source_type {
+  hh
+  manual
+}
+
+Enum application_status {
+  interested   // интересно
+  applied      // откликнулся
+  test_task    // тестовое
+  interview    // собес
+  offer        // оффер
+  rejected     // отказали
+  withdrawn    // отказался
+  skipped      // пропускаю
+}
+
+Enum search_mode {
+  all_words    // И
+  any_word     // ИЛИ
+}
+
+// "user" — зарезервированное слово в PostgreSQL, поэтому users
+Table users {
+  id integer [pk, increment]                      // identity-колонка, id генерирует БД
+  email varchar [not null, unique]
+  password_hash varchar [not null]
+  telegram_chat_id bigint                         // chat_id может не влезть в 32 бита
+  created_at timestamptz [not null, default: `now()`]
+}
+
+Table companies {
+  id integer [pk, increment]
+  source source_type [not null]
+  external_id varchar                             // id работодателя на hh; у ручных — NULL
+  name varchar [not null]
+
+  indexes {
+    (source, external_id) [unique]
+  }
+}
+
+Table vacancies {
+  id integer [pk, increment]
+  source source_type [not null]
+  external_id varchar                             // hh отдаёт id строкой; у ручных — NULL
+  owner_id integer                                // NULL для hh, id пользователя для ручных
+  company_id integer [not null]
+  title varchar [not null]
+  url varchar [not null]
+  city varchar                                    // у hh это area с числовым id — проверь в API
+  salary_from integer
+  salary_to integer
+  currency varchar(3)                             // ISO 4217, у hh "RUR"
+  experience varchar                              // id из справочника hh: noExperience, between1And3...
+  schedule varchar
+  description text                                // подгружается при открытии вакансии
+  published_at timestamptz                        // у ручных может быть неизвестна
+  first_seen_at timestamptz [not null, default: `now()`]
+
+  indexes {
+    (source, external_id) [unique]                // NULL != NULL, поэтому ручные вакансии не конфликтуют
+  }
+}
+
+// Связующая таблица: ключ — сама пара, отдельный id не нужен
+Table user_vacancies {
+  user_id integer [not null]
+  vacancy_id integer [not null]
+  status application_status                       // NULL = ещё не трогал
+  is_viewed boolean [not null, default: false]
+  status_changed_at timestamptz
+  note text
+
+  indexes {
+    (user_id, vacancy_id) [pk]
+  }
+}
+
+Table saved_searches {
+  id integer [pk, increment]
+  user_id integer [not null]
+  name varchar [not null]
+  mode search_mode [not null, default: 'all_words']
+  include_words "text[]" [not null, default: '{}']
+  exclude_words "text[]" [not null, default: '{}']
+  city varchar
+  experience varchar
+  is_active boolean [not null, default: true]
+  last_checked_at timestamptz                     // NULL = ещё ни разу не проверяли
+  created_at timestamptz [not null, default: `now()`]
+}
+
+Table search_results {
+  search_id integer [not null]
+  vacancy_id integer [not null]
+  found_at timestamptz [not null, default: `now()`]
+
+  indexes {
+    (search_id, vacancy_id) [pk]
+  }
+}
+
+Table hidden_companies {
+  user_id integer [not null]
+  company_id integer [not null]
+  created_at timestamptz [not null, default: `now()`]
+
+  indexes {
+    (user_id, company_id) [pk]
+  }
+}
+
+// Все связи — "многие к одному" (>). Many-to-many реализуются связующими таблицами.
+Ref: vacancies.company_id > companies.id
+Ref: vacancies.owner_id > users.id
+Ref: user_vacancies.user_id > users.id
+Ref: user_vacancies.vacancy_id > vacancies.id
+Ref: saved_searches.user_id > users.id
+Ref: search_results.search_id > saved_searches.id
+Ref: search_results.vacancy_id > vacancies.id
+Ref: hidden_companies.user_id > users.id
+Ref: hidden_companies.company_id > companies.id
