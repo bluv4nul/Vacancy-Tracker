@@ -150,3 +150,7 @@ vite.config.ts.timestamp-*
 
 # Claude
 CLAUDE.local.md
+
+# Other
+node_modules
+.env
