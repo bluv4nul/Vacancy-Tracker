@@ -113,12 +113,12 @@ Table hidden_companies {
 }
 
 // Все связи — "многие к одному" (>). Many-to-many реализуются связующими таблицами.
-Ref: vacancies.company_id > companies.id
-Ref: vacancies.owner_id > users.id
-Ref: user_vacancies.user_id > users.id
-Ref: user_vacancies.vacancy_id > vacancies.id
-Ref: saved_searches.user_id > users.id
-Ref: search_results.search_id > saved_searches.id
-Ref: search_results.vacancy_id > vacancies.id
-Ref: hidden_companies.user_id > users.id
-Ref: hidden_companies.company_id > companies.id
+Ref: vacancies.company_id > companies.id  // без delete: удалить компанию с вакансиями нельзя
+Ref: vacancies.owner_id > users.id [delete: cascade]
+Ref: user_vacancies.user_id > users.id [delete: cascade]
+Ref: user_vacancies.vacancy_id > vacancies.id [delete: cascade]
+Ref: saved_searches.user_id > users.id [delete: cascade]
+Ref: search_results.search_id > saved_searches.id [delete: cascade]
+Ref: search_results.vacancy_id > vacancies.id [delete: cascade]
+Ref: hidden_companies.user_id > users.id [delete: cascade]
+Ref: hidden_companies.company_id > companies.id [delete: cascade]
