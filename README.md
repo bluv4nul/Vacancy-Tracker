@@ -37,9 +37,27 @@
 docker compose up -d
 ```
 
-Войти в базу данных можно выполнив
+После поднятия базы данных необходимо выполнить миграцию для создания таблиц
+
+Windows
+```powershell
+Get-Content .\migrations\001_init.sql | docker compose exec -T db psql -U vacancytracker -d vacancytracker
+```
+
+Mac/Linux
+```bash
+docker compose exec -T db psql -U vacancytracker -d vacancytracker < migrations/001_init.sql
+```
+
+После чего можно войти в базу данных выполнив
 
 ```bash
 docker compose exec db psql -U vacancytracker -d vacancytracker
 ```
 
+Внутри `psql` результат можно проверить двумя командами: `\dt` выводит список таблиц, `\d <имя_таблицы>` — устройство одной таблицы. Выход — `\q`.
+
+```
+\dt
+\d users
+```
