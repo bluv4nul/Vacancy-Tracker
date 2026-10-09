@@ -24,8 +24,8 @@ Enum search_mode {
 // "user" — зарезервированное слово в PostgreSQL, поэтому users
 Table users {
   id integer [pk, increment]                      // identity-колонка, id генерирует БД
-  email varchar [not null, unique]
-  password_hash varchar [not null]
+  email text [not null, unique]
+  password_hash text [not null]
   telegram_chat_id bigint                         // chat_id может не влезть в 32 бита
   created_at timestamptz [not null, default: `now()`]
 }
@@ -33,8 +33,8 @@ Table users {
 Table companies {
   id integer [pk, increment]
   source source_type [not null]
-  external_id varchar                             // id работодателя на hh; у ручных — NULL
-  name varchar [not null]
+  external_id text                                // id работодателя на hh; у ручных — NULL
+  name text [not null]
 
   indexes {
     (source, external_id) [unique]
@@ -44,17 +44,17 @@ Table companies {
 Table vacancies {
   id integer [pk, increment]
   source source_type [not null]
-  external_id varchar                             // hh отдаёт id строкой; у ручных — NULL
+  external_id text                                // hh отдаёт id строкой; у ручных — NULL
   owner_id integer                                // NULL для hh, id пользователя для ручных
   company_id integer [not null]
-  title varchar [not null]
-  url varchar [not null]
-  city varchar                                    // у hh это area с числовым id — проверь в API
+  title text [not null]
+  url text [not null]
+  city text                                       // у hh это area с числовым id — проверь в API
   salary_from integer
   salary_to integer
   currency varchar(3)                             // ISO 4217, у hh "RUR"
-  experience varchar                              // id из справочника hh: noExperience, between1And3...
-  schedule varchar
+  experience text                                 // id из справочника hh: noExperience, between1And3...
+  schedule text
   description text                                // подгружается при открытии вакансии
   published_at timestamptz                        // у ручных может быть неизвестна
   first_seen_at timestamptz [not null, default: `now()`]
@@ -81,12 +81,12 @@ Table user_vacancies {
 Table saved_searches {
   id integer [pk, increment]
   user_id integer [not null]
-  name varchar [not null]
+  name text [not null]
   mode search_mode [not null, default: 'all_words']
   include_words "text[]" [not null, default: '{}']
   exclude_words "text[]" [not null, default: '{}']
-  city varchar
-  experience varchar
+  city text
+  experience text
   is_active boolean [not null, default: true]
   last_checked_at timestamptz                     // NULL = ещё ни разу не проверяли
   created_at timestamptz [not null, default: `now()`]
