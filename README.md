@@ -49,6 +49,18 @@ Mac/Linux
 docker compose exec -T db psql -U vacancytracker -d vacancytracker < migrations/001_init.sql
 ```
 
+После миграции добавьте тестового пользователя для разработки. Пока нет входа, приложение работает от его имени (`id = 1`), поэтому без этого шага функции API работать не будут.
+
+Windows
+```powershell
+Get-Content .\seeds\001_dev_user.sql | docker compose exec -T db psql -U vacancytracker -d vacancytracker
+```
+
+Mac/Linux
+```bash
+docker compose exec -T db psql -U vacancytracker -d vacancytracker < seeds/001_dev_user.sql
+```
+
 Затем установите зависимости и запустите сервер:
 
 ```bash
