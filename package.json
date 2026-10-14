@@ -5,6 +5,12 @@
   "license": "MIT",
   "author": "Andrew Frolov (bluv4nul)",
   "type": "module",
-  "scripts": {},
-  "private": true
+  "scripts": {
+    "start": "node --env-file=.env src/app.js"
+  },
+  "private": true,
+  "dependencies": {
+    "express": "^5.3.0",
+    "pg": "^8.23.1"
+  }
 }
