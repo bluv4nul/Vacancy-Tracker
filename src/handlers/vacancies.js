@@ -13,7 +13,7 @@ export const createVacancy = async (req, res) => {
   const { companyName, ...vacancyFields } = req.body;
   if (!vacancyFields.title || !vacancyFields.url || !companyName) {
     res.status(400).json({
-      Error: "Fields: companyName, title and url are required. Try again.",
+      error: "Fields: companyName, title and url are required. Try again.",
     });
     return;
   }
