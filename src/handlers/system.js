@@ -1,4 +1,4 @@
-import { pool } from "./db.js";
+import { pool } from "../db.js";
 
 export const home = (req, res) =>
   res.json({

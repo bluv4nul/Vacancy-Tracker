@@ -1,15 +1,20 @@
 import express from "express";
 
-import { home, healthCheck } from "./handlers.js";
-import { defineUser } from "./middleware.js";
+import { home, healthCheck } from "./handlers/system.js";
+import { listVacancies, createVacancy } from "./handlers/vacancies.js";
+import { setCurrentUser } from "./middleware.js";
 
 const PORT = process.env.PORT || 3000;
 
 const app = express();
 
-app.use(defineUser);
+app.use(setCurrentUser);
+app.use(express.json());
 
 app.get("/", home);
+
+app.get("/vacancies", listVacancies);
+app.post("/vacancies", createVacancy);
 
 app.get("/health", healthCheck);
 

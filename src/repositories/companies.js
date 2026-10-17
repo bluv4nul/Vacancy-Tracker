@@ -2,7 +2,8 @@ import { pool } from "../db.js";
 
 async function findManualCompanyByName(name) {
   const query = {
-    text: "select id, source, external_id, name from companies where source = 'manual' and lower(name) = lower(trim($1));",
+    text: `select id, source, external_id as "externalId", name from companies 
+    where source = 'manual' and lower(name) = lower(trim($1));`,
     values: [name],
   };
 
@@ -16,7 +17,9 @@ export async function findOrCreateManualCompany(name) {
   }
 
   const query = {
-    text: "insert into companies (source, name) values ('manual', trim($1)) returning id, source, external_id, name",
+    text: `insert into companies (source, name) values 
+    ('manual', trim($1)) 
+    returning id, source, external_id as "externalId", name`,
     values: [name],
   };
 
