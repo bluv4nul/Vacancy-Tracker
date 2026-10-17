@@ -82,3 +82,38 @@ docker compose exec db psql -U vacancytracker -d vacancytracker
 \dt
 \d users
 ```
+
+## API
+
+Пока все запросы выполняются от имени тестового пользователя (`id = 1`), вход появится позже. Тело запросов и ответов — JSON, имена полей в camelCase.
+
+| Метод | Путь | Что делает |
+|---|---|---|
+| `GET` | `/health` | Проверка связи с базой: текущее время из PostgreSQL |
+| `GET` | `/vacancies` | Ручные вакансии текущего пользователя, новые первыми |
+| `POST` | `/vacancies` | Добавить ручную вакансию |
+
+### `POST /vacancies`
+
+Обязательные поля — `companyName`, `title`, `url`, остальные можно не передавать. Компания ищется по названию без учёта регистра и пробелов по краям; если такой ещё нет, она создаётся.
+
+```json
+{
+  "companyName": "Яндекс",
+  "title": "Junior Backend Developer",
+  "url": "https://example.com/vacancy/1",
+  "city": "Москва",
+  "salaryFrom": 80000,
+  "salaryTo": 120000,
+  "currency": "RUB",
+  "experience": "noExperience",
+  "schedule": "remote",
+  "description": "Node.js, PostgreSQL, Express",
+  "publishedAt": "2026-10-15T10:00:00Z"
+}
+```
+
+Ответы:
+
+- `201` — вакансия создана, в ответе она целиком, вместе с `id`;
+- `400` — не хватает обязательного поля, вакансия не создаётся.
