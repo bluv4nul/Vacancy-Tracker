@@ -55,3 +55,13 @@ export async function createManualVacancy(
 
   return (await pool.query(query)).rows[0];
 }
+
+export async function findManualVacancy(vacancyId, ownerId) {
+  const query = {
+    text: `select id from vacancies where
+    id = $1 and owner_id = $2`,
+    values: [vacancyId, ownerId],
+  };
+
+  return (await pool.query(query)).rows[0] ?? null;
+}
