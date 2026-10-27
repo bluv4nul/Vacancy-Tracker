@@ -92,6 +92,11 @@ docker compose exec db psql -U vacancytracker -d vacancytracker
 | `GET` | `/health` | Проверка связи с базой: текущее время из PostgreSQL |
 | `GET` | `/vacancies` | Ручные вакансии текущего пользователя, новые первыми |
 | `POST` | `/vacancies` | Добавить ручную вакансию |
+| `PATCH` | `/vacancies/:id` | Изменить статус отклика, заметку или отметку «просмотрено» |
+
+### `GET /vacancies`
+
+Вместе с полями вакансии в каждой записи приходят данные текущего пользователя по ней: `status`, `note`, `isViewed`, `statusChangedAt`. Если вакансию ещё не меняли через `PATCH`, у неё `status`, `note` и `statusChangedAt` равны `null`, а `isViewed` — `false`.
 
 ### `POST /vacancies`
 
@@ -117,3 +122,26 @@ docker compose exec db psql -U vacancytracker -d vacancytracker
 
 - `201` — вакансия создана, в ответе она целиком, вместе с `id`;
 - `400` — не хватает обязательного поля, вакансия не создаётся.
+
+### `PATCH /vacancies/:id`
+
+Меняет данные текущего пользователя по вакансии. Все поля необязательны, но хотя бы одно должно быть передано:
+
+- `status` — статус отклика, одно из значений: `interested`, `applied`, `test_task`, `interview`, `offer`, `rejected`, `withdrawn`, `skipped`;
+- `note` — заметка, строка;
+- `isViewed` — просмотрена ли вакансия, `true` или `false`.
+
+Поле, которое не передано или передано как `null`, не меняется. Чтобы удалить заметку, передайте пустую строку: `"note": ""`. При смене статуса обновляется `statusChangedAt`.
+
+```json
+{
+  "status": "applied",
+  "note": "Откликнулся через сайт компании"
+}
+```
+
+Ответы:
+
+- `200` — данные сохранены, в ответе `userId`, `vacancyId`, `status`, `note`, `isViewed`, `statusChangedAt`;
+- `400` — не передано ни одного поля, неизвестный статус или поле не того типа;
+- `404` — вакансии с таким `id` нет или она принадлежит другому пользователю.
