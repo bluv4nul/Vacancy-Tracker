@@ -1,4 +1,4 @@
-import { pool } from "../db.js";
+import { pool } from "../prisma.js";
 
 async function findManualCompanyByName(name) {
   const query = {
