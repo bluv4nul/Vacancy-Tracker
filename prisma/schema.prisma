@@ -1,0 +1,141 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Company {
+  id              Int             @id @default(autoincrement())
+  source          SourceType
+  externalId      String?         @map("external_id")
+  name            String
+  hiddenCompanies HiddenCompany[]
+  vacancies       Vacancy[]
+
+  @@unique([source, externalId])
+  @@map("companies")
+}
+
+model HiddenCompany {
+  userId    Int      @map("user_id")
+  companyId Int      @map("company_id")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([userId, companyId])
+  @@map("hidden_companies")
+}
+
+model SavedSearch {
+  id            Int            @id @default(autoincrement())
+  userId        Int            @map("user_id")
+  name          String
+  mode          SearchMode     @default(all_words)
+  includeWords  String[]       @default([]) @map("include_words")
+  excludeWords  String[]       @default([]) @map("exclude_words")
+  city          String?
+  experience    String?
+  isActive      Boolean        @default(true) @map("is_active")
+  lastCheckedAt DateTime?      @map("last_checked_at") @db.Timestamptz(6)
+  createdAt     DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  searchResults SearchResult[]
+
+  @@map("saved_searches")
+}
+
+model SearchResult {
+  searchId  Int         @map("search_id")
+  vacancyId Int         @map("vacancy_id")
+  foundAt   DateTime    @default(now()) @map("found_at") @db.Timestamptz(6)
+  search    SavedSearch @relation(fields: [searchId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  vacancy   Vacancy     @relation(fields: [vacancyId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([searchId, vacancyId])
+  @@map("search_results")
+}
+
+model UserVacancy {
+  userId          Int                @map("user_id")
+  vacancyId       Int                @map("vacancy_id")
+  status          ApplicationStatus?
+  isViewed        Boolean            @default(false) @map("is_viewed")
+  statusChangedAt DateTime?          @map("status_changed_at") @db.Timestamptz(6)
+  note            String?
+  user            User               @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  vacancy         Vacancy            @relation(fields: [vacancyId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([userId, vacancyId])
+  @@map("user_vacancies")
+}
+
+model User {
+  id              Int             @id @default(autoincrement())
+  email           String          @unique
+  passwordHash    String          @map("password_hash")
+  telegramChatId  BigInt?         @map("telegram_chat_id")
+  createdAt       DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  hiddenCompanies HiddenCompany[]
+  savedSearches   SavedSearch[]
+  userVacancies   UserVacancy[]
+  vacancies       Vacancy[]
+
+  @@map("users")
+}
+
+model Vacancy {
+  id            Int            @id @default(autoincrement())
+  source        SourceType
+  externalId    String?        @map("external_id")
+  ownerId       Int?           @map("owner_id")
+  companyId     Int            @map("company_id")
+  title         String
+  url           String
+  city          String?
+  salaryFrom    Int?           @map("salary_from")
+  salaryTo      Int?           @map("salary_to")
+  currency      String?        @db.VarChar(3)
+  experience    String?
+  schedule      String?
+  description   String?
+  publishedAt   DateTime?      @map("published_at") @db.Timestamptz(6)
+  firstSeenAt   DateTime       @default(now()) @map("first_seen_at") @db.Timestamptz(6)
+  searchResults SearchResult[]
+  userVacancies UserVacancy[]
+  company       Company        @relation(fields: [companyId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  owner         User?          @relation(fields: [ownerId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([source, externalId])
+  @@map("vacancies")
+}
+
+enum ApplicationStatus {
+  interested
+  applied
+  test_task
+  interview
+  offer
+  rejected
+  withdrawn
+  skipped
+
+  @@map("application_status")
+}
+
+enum SearchMode {
+  all_words
+  any_word
+
+  @@map("search_mode")
+}
+
+enum SourceType {
+  hh
+  manual
+
+  @@map("source_type")
+}
