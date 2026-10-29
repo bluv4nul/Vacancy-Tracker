@@ -1,27 +1,39 @@
-import { pool } from "../prisma.js";
+import { prisma } from "../prisma.js";
 
-async function findManualCompanyByName(name) {
-  const query = {
-    text: `select id, source, external_id as "externalId", name from companies 
-    where source = 'manual' and lower(name) = lower(trim($1));`,
-    values: [name],
-  };
+async function findManualCompanyByName(inputName) {
+  const company = await prisma.company.findFirst({
+    where: {
+      AND: [
+        {
+          source: "manual",
+        },
+        {
+          name: {
+            equals: inputName,
+            mode: "insensitive",
+          },
+        },
+      ],
+    },
+  });
 
-  return (await pool.query(query)).rows[0] ?? null;
+  return company;
 }
 
-export async function findOrCreateManualCompany(name) {
-  const existing = await findManualCompanyByName(name);
+export async function findOrCreateManualCompany(inputName) {
+  inputName = inputName.trim();
+
+  const existing = await findManualCompanyByName(inputName);
   if (existing) {
     return existing;
   }
 
-  const query = {
-    text: `insert into companies (source, name) values 
-    ('manual', trim($1)) 
-    returning id, source, external_id as "externalId", name`,
-    values: [name],
-  };
+  const company = await prisma.company.create({
+    data: {
+      source: "manual",
+      name: inputName,
+    },
+  });
 
-  return (await pool.query(query)).rows[0];
+  return company;
 }

@@ -1,16 +1,9 @@
-import { pool } from "../db.js";
+import { prisma } from "../prisma.js";
+import { ApplicationStatus } from "../generated/prisma/enums.ts";
 
-let statuses = null;
+const statuses = Object.values(ApplicationStatus);
 
 export async function listStatuses() {
-  if (statuses) {
-    return statuses;
-  }
-
-  const query = {
-    text: "select enum_range(null::application_status)::text[] as statuses;",
-  };
-  statuses = (await pool.query(query)).rows[0].statuses;
   return statuses;
 }
 
