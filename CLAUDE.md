@@ -46,7 +46,7 @@
 - **Доступ:** можно свободно читать файлы, смотреть git log/diff и запускать команды только для чтения и диагностики (логи, статус контейнеров, тесты). Ничего не изменять (файлы, git, контейнеры, БД) без явной просьбы Андрея.
 - Общение — по-русски. Объяснения подробные и понятные, а не сжатые. Наводящие вопросы нужны — Андрей любит искать и выбирать сам, — но не больше одного за ответ; мелкие детали и подвохи объяснять самому. Ссылки на документацию давать всегда, как справку.
 
-## Текущее состояние (обновлено 2026-10-29)
+## Текущее состояние (обновлено 2026-11-16)
 
 ### Что уже сделано
 - Спроектированы функции MVP и схема БД: docs/design.md, docs/schema.dbml, docs/image/dbdiagram.png.
@@ -98,7 +98,7 @@
 - ⚪ Повторная отправка того же статуса обновляет `statusChangedAt` — для MVP приемлемо.
 
 ### Где остановились
-Идёт шаг 4 — переход на Prisma (обновлено 2026-10-29). Ветка `refactor/prisma`, запушены коммиты: `chore: set up prisma and baseline existing schema`, `refactor: replace pg pool with prisma client module`, `fix: delete old migration folder`. **Приложение сейчас не запускается** (`userVacancies.js` и `handlers/system.js` ещё импортируют `pool` из удалённого `src/db.js`).
+Идёт шаг 4 — переход на Prisma (обновлено 2026-11-16). Ветка `refactor/prisma`. **Код переведён полностью**: `pool` и `src/db.js` нигде не используются, приложение запускается, `/health` и `GET /vacancies` отвечают 200 (проверено 2026-11-16). Осталось: проверка `PATCH`/`POST` через HTTP, README, PR.
 
 Сделано:
 - Prisma 7.10.1 (`prisma` — dev, `@prisma/client`, `@prisma/adapter-pg`; `dotenv` — dev, только для CLI). Метка `latest` у CLI `prisma` в npm указывает на `8.0.0-rc` — ставить явно `prisma@7.x`, версия CLI = версии клиента.
@@ -109,24 +109,27 @@
 - `src/prisma.js` — единственный экземпляр `PrismaClient` с `PrismaPg({ connectionString: process.env.DATABASE_URL })`, без `dotenv` (приложение читает `.env` через `--env-file`).
 - ИИ-скиллы, установленные `prisma init` (`.agents/`, `.claude/skills/`, `.windsurf/`, `skills-lock.json`), — в `.gitignore`.
 - `repositories/companies.js` переведён и проверен (`findFirst` с `equals` + `mode: "insensitive"`, `trim()` один раз в начале `findOrCreateManualCompany`, `create`).
-- Все три repository закоммичены и запушены одним WIP-коммитом (2026-10-29); `test.js` не в git.
-- `repositories/userVacancies.js`: `listStatuses` переведён — `const`-массив `Object.values(ApplicationStatus)` на уровне модуля, без запроса к базе. ⚠ Импорт из `../generated/prisma/enums.js` — **файла `.js` нет, нужно `.ts`** (или импорт из `client.ts`); `let` → `const`. Не проверено. `insertOrUpdateUserVacancy` — ещё старый SQL с `pool`.
-- `repositories/vacancies.js` переведён: `listManualVacanciesByOwner` — `findMany` + `include: { userVacancies: { where: { userId } } }` + `map` с распаковкой в плоские `status/note/statusChangedAt` (`?.` и `?? null`) и `isViewed` (`?? false`) — проверено, ответ как у старого SQL. `createManualVacancy` (`create`) и `findManualVacancy` (`findFirst`, без `select`) — написаны, **не проверены**.
+- `repositories/vacancies.js` переведён: `listManualVacanciesByOwner` — `findMany` + `include: { userVacancies: { where: { userId } } }` + `map` с распаковкой в плоские `status/note/statusChangedAt` (`?.` и `?? null`) и `isViewed` (`?? false`) — проверено, ответ как у старого SQL. `createManualVacancy` (`create`, по умолчанию отдаёт все скалярные поля — тот же набор, что старый `RETURNING`) и `findManualVacancy` (`findFirst`, без `select`; обработчик проверяет только «найдено или нет») — **не проверены**.
+- `repositories/userVacancies.js` переведён (2026-11-16):
+  - `listStatuses` — `const`-массив `Object.values(ApplicationStatus)` на уровне модуля (импорт из `../generated/prisma/enums.ts`), без запроса к базе.
+  - `insertOrUpdateUserVacancy` — `prisma.userVacancy.upsert`, `where: { userId_vacancyId: { userId, vacancyId } }` (составной ключ), в `create` явно `userId` и `vacancyId`. Перед запросом приведение значений, общее для обеих веток: `status` — `null` → `undefined`; `note` — сначала `""` → `null` (очистка), иначе `null` → `undefined` (порядок важен); `isViewed` — `null` → `undefined` (обязательно: поле не допускает NULL, в `create` сработает `@default(false)`); `statusChangedAt` — `new Date()` только если пришёл статус, иначе `undefined`, передаётся и в `update`, и в `create`. Время теперь берёт Node, а не `now()` базы. `select` не нужен — других скалярных полей у модели нет.
+  - Разобранные ошибки по пути: присваивание `=` внутри литерала объекта (затирало статус в обеих ветках), необъявленная переменная (ES-модули — strict mode → `ReferenceError`), `Date.now()` — число, а `DateTime` в Prisma принимает только `Date`/ISO-строку. Запросы Prisma ленивые: без `await`/`then` не выполняются.
+- `handlers/system.js`: `healthCheck` — `prisma.$queryRaw` тегированным шаблоном (подстановки уходят параметрами; `$queryRawUnsafe` с пользовательскими данными нельзя), возвращает массив строк сразу, без `.rows`; ответ прежний `[{ now }]`. ⚠ На будущее: `bigint` из `$queryRaw` (например `count(*)`) приходит как JS `BigInt`, `res.json` на нём падает — то же с `users.telegramChatId`.
+- Seed переведён на Prisma (коммит `chore: replace sql seed with prisma seed`): `prisma/seed.js`, в `prisma7.config.ts` — `migrations.seed: "node prisma/seed.js"`, запуск `npx prisma db seed` (в v7 после `migrate dev`/`reset` seed сам не запускается). `upsert` по `email` с пустым `update` — повторный запуск ничего не меняет (`users_id_seq` после запусков осталась на 1 — похоже, Prisma с пустым `update` делает `SELECT`, а не `ON CONFLICT`; что запуск точно был повторным, не подтверждено; дырки в identity в любом случае не страшны). `id` не задаётся явно (`generated always as identity` не даст) — на пустой базе первая вставка получает `1`. `try` / `finally` с `$disconnect()`, без `catch`: при ошибке код завершения 1 (проверено). `seeds/001_dev_user.sql` и папка `seeds/` удалены. Разобрано: зачем пул соединений и один `PrismaClient` на процесс; шаблон `main().then().catch()` из документации — наследие времён без top-level await, у нас не нужен.
+- `test.js` (временный, не в git) был только на ноутбуке и не переносится.
 
 Следующее при возвращении:
-0. Поправить импорт `ApplicationStatus` на `.ts`, проверить `listStatuses()` → 8 строк.
-1. Проверить в `test.js` `createManualVacancy` (в т. ч. `publishedAt` как `"2026-10-15T10:00:00Z"` и как `"2026-10-15"`) и `findManualVacancy` (своя → объект, `999` → null, чужой `ownerId` → null).
-2. `userVacancies.js`: `listStatuses` → значения сгенерированного enum `ApplicationStatus` (без запроса к базе, кэш не нужен); `insertOrUpdateUserVacancy` → `prisma.userVacancy.upsert` с ключом `userId_vacancyId`; перенести правило B (`null`/`undefined` = не менять — в Prisma `undefined` = не трогать, `null` = записать NULL, поэтому null из обработчика превращать в undefined), очистку `""` → NULL, `statusChangedAt = new Date()` только если пришёл статус, `isViewed` по умолчанию `false` только при создании; `select`/форма ответа как раньше (`userId, vacancyId, status, note, isViewed, statusChangedAt`).
-3. `handlers/system.js` `healthCheck` → `prisma.$queryRaw` для `select now()`.
-4. Прогнать 16 сценариев `PATCH` + `GET`/`POST /vacancies` + `/health`.
-5. README «Запуск»: `npx prisma migrate deploy` вместо psql, `npx prisma generate` после `npm install`, `DATABASE_URL` вместо `PG*` (пароль в `POSTGRES_PASSWORD` и в `DATABASE_URL`); seed пока через psql. **Срочно: README ссылается на удалённый `migrations/001_init.sql`.**
-6. Удалить `test.js`, PR `refactor: …`.
+1. Прогнать через HTTP-клиент 16 сценариев `PATCH` + `GET`/`POST /vacancies`. Отдельно: `PATCH` со статусом заполняет `statusChangedAt`; `PATCH` с `note: null` не стирает заметку, с `""` — стирает; `POST` с `publishedAt` как `"2026-10-15T10:00:00Z"` и как `"2026-10-15"` (вероятно 500 — Prisma строже к типам, это ожидаемо). Если удобнее — `test.js` для `createManualVacancy` / `findManualVacancy` (своя → объект, `999` → null, чужой `ownerId` → null).
+2. README «Запуск» — **срочно, ссылается на удалённый `migrations/001_init.sql`**: `DATABASE_URL` вместо `PG*` (пароль в `POSTGRES_PASSWORD` и в `DATABASE_URL`), `npx prisma generate` после `npm install`, `npx prisma migrate deploy` и `npx prisma db seed` вместо psql.
+3. PR `refactor: …`.
+
+⚪ Мелочи на усмотрение Андрея: `note == ""` → `===`; неиспользуемая переменная `testUser` в `seed.js`.
 
 Заметки по Prisma, важные дальше:
 - Prisma строже к типам, чем SQL через `pg`: строку `"80000"` в `Int` и, вероятно, дату без времени в `DateTime` не примет → сейчас 500. Закроется проверкой типов в `POST /vacancies` (отложенная задача).
 - ⚠ `undefined` в `where` = «не фильтровать». Если `ownerId`/`userId` придёт `undefined`, `findManualVacancy` найдёт чужую вакансию, а `listManualVacanciesByOwner` вернёт вакансии всех. Сейчас безопасно (middleware всегда ставит `req.userId`); на шаге 10 (настоящий вход) middleware обязана не пускать запрос без пользователя дальше.
 
-План шага 4 (выдавать по одному пункту):
+План шага 4 (выдавать по одному пункту; пункты 1–6 выполнены, осталось 7–9):
 1. Решение: кто управляет схемой — Prisma Migrate (baseline текущей базы: `db pull` → `migrate diff --from-empty` в `prisma/migrations/0_init` → `migrate resolve --applied 0_init`; плюс — появится учёт применённых миграций) или свои `.sql` + `db pull` после каждой. **Решено (2026-10-28): вариант A — Prisma Migrate**, baseline текущей базы. `migrations/001_init.sql` станет историей; новые изменения схемы — через `schema.prisma` + `prisma migrate dev`.
 2. Установка по гайду «Add to existing project / PostgreSQL» (v7): `prisma` (dev), `@prisma/client`, `@prisma/adapter-pg`; `prisma.config.ts` с URL базы (переменная `DATABASE_URL` в `.env`/`.env.example`). ⚠ Генератор `prisma-client` (по умолчанию в v7) выдаёт TypeScript-файлы в `output`; проект на JS — проверить, что Node 26 запускает их сам (type stripping, `importFileExtension`), это первое, что проверить после генерации.
 3. `prisma db pull` → привести схему к соглашениям: модели в единственном числе PascalCase с `@@map`, поля camelCase с `@map` (заменит ручные SQL-псевдонимы), enum-ы.
@@ -167,6 +170,7 @@
 - API hh: отдаёт ли поиск полное описание или фрагмент; город — это area с числовым id.
 
 ### Окружение
-- Работа идёт на двух машинах (ПК и ноутбук), синхронизация через GitHub. Перед сменой машины — закоммитить и запушить рабочую ветку. На новой машине: клонировать, `.env` по образцу `.env.example`, `docker compose up -d`, `npm install`, `npx prisma generate`, `npx prisma migrate deploy`, seed через psql (`seeds/001_dev_user.sql`). README «Запуск» пока устарел (ссылается на удалённый `migrations/001_init.sql`).
+- Работа идёт на двух машинах (ПК и ноутбук), синхронизация через GitHub. Перед сменой машины — закоммитить и запушить рабочую ветку. На новой машине: клонировать, `.env` по образцу `.env.example` (сохранить файл! пустой `.env` даёт «datasource.url property is required» у Prisma и падение контейнера без `POSTGRES_PASSWORD` — `docker compose up -d` этого не показывает, смотреть `docker compose ps`), `docker compose up -d`, `npm install`, `npx prisma generate`, `npx prisma migrate deploy`, `npx prisma db seed`. `POSTGRES_*` действуют только при инициализации пустого тома. README «Запуск» пока устарел (ссылается на удалённый `migrations/001_init.sql`).
+- Ноутбук настроен 2026-11-16 с нуля: `migrate deploy` на пустой базе честно выполнил `0_init` — миграции воспроизводятся. На ПК база старая (baseline через `resolve --applied`, пользователь из старого SQL-seed) — там `npx prisma db seed` безопасен, ничего не изменит.
 - В Docker также живёт чужой для этого проекта compose-проект `wikialien` (Wiki.js + postgres:17-alpine, порт 8080) — не трогать.
 - `gh` CLI не установлен: PR смотреть через `git ls-remote` / локальный diff и публичный GitHub API.

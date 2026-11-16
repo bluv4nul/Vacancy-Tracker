@@ -12,20 +12,39 @@ export async function insertOrUpdateUserVacancy(
   vacancyId,
   { status, note, isViewed },
 ) {
-  const query = {
-    text: `
-    insert into user_vacancies 
-    (user_id, vacancy_id, status, note, is_viewed, status_changed_at) values
-    ($1, $2, $3, nullif($4, ''), coalesce($5, false), case when $3::application_status is null then null else now() end)
-    on conflict (user_id, vacancy_id) do update set
-    status = coalesce(excluded.status, user_vacancies.status),
-    note = nullif(coalesce($4, user_vacancies.note), ''),
-    is_viewed = coalesce($5, user_vacancies.is_viewed),
-    status_changed_at = coalesce(excluded.status_changed_at, user_vacancies.status_changed_at)
-    returning user_id as "userId", vacancy_id as "vacancyId", status, note, is_viewed as "isViewed", status_changed_at as "statusChangedAt";
-    `,
-    values: [userId, vacancyId, status, note, isViewed],
-  };
+  let statusChangedAt = undefined;
 
-  return (await pool.query(query)).rows[0];
+  if (status != null) {
+    statusChangedAt = new Date();
+  } else {
+    status = undefined;
+  }
+  if (note == "") {
+    note = null;
+  } else if (note == null) {
+    note = undefined;
+  }
+  if (isViewed == null) {
+    isViewed = undefined;
+  }
+
+  const userVacancy = await prisma.userVacancy.upsert({
+    where: { userId_vacancyId: { userId, vacancyId } },
+    update: {
+      status,
+      note,
+      isViewed,
+      statusChangedAt,
+    },
+    create: {
+      userId,
+      vacancyId,
+      status,
+      note,
+      isViewed,
+      statusChangedAt,
+    },
+  });
+
+  return userVacancy;
 }
