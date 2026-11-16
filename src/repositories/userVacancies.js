@@ -19,7 +19,7 @@ export async function insertOrUpdateUserVacancy(
   } else {
     status = undefined;
   }
-  if (note == "") {
+  if (note === "") {
     note = null;
   } else if (note == null) {
     note = undefined;
