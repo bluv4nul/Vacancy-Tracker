@@ -1,4 +1,4 @@
-import { pool } from "../db.js";
+import { prisma } from "../prisma.js";
 
 export const home = (req, res) =>
   res.json({
@@ -8,6 +8,7 @@ export const home = (req, res) =>
   });
 
 export const healthCheck = async (req, res) => {
-  const result = await pool.query("SELECT NOW()");
-  res.send(result.rows);
+  const health = await prisma.$queryRaw`SELECT NOW()`;
+
+  res.send(health);
 };

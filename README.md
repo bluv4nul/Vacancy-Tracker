@@ -19,7 +19,7 @@
 ## Стек
 
 - JavaScript, Node.js, Express
-- PostgreSQL (драйвер `pg`, сырой SQL)
+- PostgreSQL, Prisma ORM 7 (драйвер-адаптер `@prisma/adapter-pg`)
 
 ## Документация
 
@@ -27,9 +27,11 @@
 - [Схема БД (DBML)](docs/schema.dbml)
 
 ## Запуск
-Для запуска нужны установленные Docker и Node.js 20.6 или новее.
+Для запуска нужны установленные Docker и Node.js 22.18 или новее (либо 24+). Более старые версии не подходят: клиент Prisma генерируется в файлы `.ts`, и Node запускает их без дополнительных флагов только начиная с этих версий.
 
-В корне репозитория лежит файл `.env.example`. По его образцу следует создать `.env` локально, указав свой пароль. Пароль указывается дважды — в `POSTGRES_PASSWORD` (для контейнера с базой) и в `PGPASSWORD` (для приложения), значения должны совпадать.
+В корне репозитория лежит файл `.env.example`. По его образцу следует создать `.env` локально, указав свой пароль. Пароль указывается дважды — в `POSTGRES_PASSWORD` (для контейнера с базой) и внутри строки подключения `DATABASE_URL` (для приложения и Prisma), значения должны совпадать. Если в пароле есть спецсимволы (`@`, `:`, `/`, `#` и т. п.), в `DATABASE_URL` их нужно записать в URL-кодировке (например, `@` → `%40`).
+
+> Не забудьте сохранить `.env`. С пустым файлом контейнер с базой не стартует (нет `POSTGRES_PASSWORD`), а `docker compose up -d` об этом не сообщит — проверяйте `docker compose ps`. Prisma в этом случае выдаёт ошибку `datasource.url property is required`.
 
 Далее база данных поднимается в docker командой
 
@@ -37,34 +39,30 @@
 docker compose up -d
 ```
 
-После поднятия базы данных необходимо выполнить миграцию для создания таблиц
+Переменные `POSTGRES_*` действуют только при первом запуске на пустом томе: если поменять их позже, существующая база не изменится.
 
-Windows
-```powershell
-Get-Content .\migrations\001_init.sql | docker compose exec -T db psql -U vacancytracker -d vacancytracker
-```
-
-Mac/Linux
-```bash
-docker compose exec -T db psql -U vacancytracker -d vacancytracker < migrations/001_init.sql
-```
-
-После миграции добавьте тестового пользователя для разработки. Пока нет входа, приложение работает от его имени (`id = 1`), поэтому без этого шага функции API работать не будут.
-
-Windows
-```powershell
-Get-Content .\seeds\001_dev_user.sql | docker compose exec -T db psql -U vacancytracker -d vacancytracker
-```
-
-Mac/Linux
-```bash
-docker compose exec -T db psql -U vacancytracker -d vacancytracker < seeds/001_dev_user.sql
-```
-
-Затем установите зависимости и запустите сервер:
+Затем установите зависимости и сгенерируйте клиент Prisma (он появится в `src/generated/prisma` и в репозиторий не входит):
 
 ```bash
 npm install
+npx prisma generate
+```
+
+Примените миграции — они создадут таблицы. `migrate deploy` только выполняет готовые миграции из `prisma/migrations` и ничего не генерирует, поэтому подходит для разворачивания базы:
+
+```bash
+npx prisma migrate deploy
+```
+
+После миграции добавьте тестового пользователя для разработки. Пока нет входа, приложение работает от его имени (`id = 1`), поэтому без этого шага функции API работать не будут. Повторный запуск ничего не меняет.
+
+```bash
+npx prisma db seed
+```
+
+Запустите сервер:
+
+```bash
 npm start
 ```
 
