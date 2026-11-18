@@ -49,7 +49,7 @@ export const updateVacancy = async (req, res) => {
     return;
   }
 
-  const statuses = await listStatuses();
+  const statuses = listStatuses();
   if (
     (status != null && !statuses.includes(status)) ||
     (note != null && typeof note != "string") ||
