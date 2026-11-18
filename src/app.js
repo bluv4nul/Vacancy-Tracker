@@ -8,7 +8,11 @@ import {
   updateVacancy,
 } from "./handlers/vacancies.js";
 
-import { listSearches, createSearch } from "./handlers/searches.js";
+import {
+  listSearches,
+  createSearch,
+  deleteSearch,
+} from "./handlers/searches.js";
 
 import { setCurrentUser } from "./middleware.js";
 
@@ -27,6 +31,7 @@ app.patch("/vacancies/:id", updateVacancy);
 
 app.get("/searches", listSearches);
 app.post("/searches", createSearch);
+app.delete("/searches/:id", deleteSearch);
 
 app.get("/health", healthCheck);
 

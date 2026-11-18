@@ -1,7 +1,9 @@
+import { prisma } from "../prisma.js";
 import {
   listModes,
   createSavedSearch,
   listUserSearches,
+  deleteSavedSearch,
 } from "../repositories/searches.js";
 
 export const listSearches = async (req, res) => {
@@ -95,4 +97,27 @@ export const createSearch = async (req, res) => {
   const search = await createSavedSearch(req.userId, searchFields);
 
   res.status(201).send(search);
+};
+
+export const deleteSearch = async (req, res) => {
+  const searchId = Number(req.params.id);
+
+  if (!Number.isInteger(searchId) || searchId <= 0 || searchId > 2147483647) {
+    res.status(404);
+    res.end();
+    return;
+  }
+
+  const userId = req.userId;
+
+  const deleted = await deleteSavedSearch(searchId, userId);
+
+  if (deleted.count == 0) {
+    res.status(404).send("No data");
+    return;
+  } else if (deleted.count == 1) {
+    res.status(204);
+    res.end();
+    return;
+  }
 };

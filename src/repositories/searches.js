@@ -37,3 +37,15 @@ export async function createSavedSearch(
 
   return search;
 }
+
+export async function deleteSavedSearch(searchId, userId) {
+  const deleted = await prisma.savedSearch.deleteMany({
+    where: {
+      id: searchId,
+      userId: userId,
+    },
+    limit: 1,
+  });
+
+  return deleted;
+}
