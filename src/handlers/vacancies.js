@@ -64,7 +64,7 @@ export const updateVacancy = async (req, res) => {
     return;
   }
 
-  res.json(
+  res.status(200).json(
     await insertOrUpdateUserVacancy(userId, vacancyId, {
       status,
       note,

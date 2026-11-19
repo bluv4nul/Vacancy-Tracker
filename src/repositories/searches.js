@@ -1,5 +1,6 @@
 import { prisma } from "../prisma.js";
 import { SearchMode } from "../generated/prisma/enums.ts";
+import { PrismaClientKnownRequestError } from "../generated/prisma/internal/prismaNamespace.ts";
 
 const modes = Object.values(SearchMode);
 
@@ -48,4 +49,34 @@ export async function deleteSavedSearch(searchId, userId) {
   });
 
   return deleted;
+}
+
+export async function updateSavedSearch(
+  searchId,
+  userId,
+  { name, includeWords, excludeWords, mode, isActive, city, experience },
+) {
+  try {
+    const search = await prisma.savedSearch.update({
+      where: { id: searchId, userId: userId },
+      data: {
+        name,
+        includeWords,
+        excludeWords,
+        mode,
+        isActive,
+        city,
+        experience,
+      },
+    });
+    return search;
+  } catch (error) {
+    if (
+      error instanceof PrismaClientKnownRequestError &&
+      error.code == "P2025"
+    ) {
+      return null;
+    }
+    throw error;
+  }
 }

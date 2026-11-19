@@ -12,6 +12,7 @@ import {
   listSearches,
   createSearch,
   deleteSearch,
+  updateSearch,
 } from "./handlers/searches.js";
 
 import { setCurrentUser } from "./middleware.js";
@@ -32,6 +33,7 @@ app.patch("/vacancies/:id", updateVacancy);
 app.get("/searches", listSearches);
 app.post("/searches", createSearch);
 app.delete("/searches/:id", deleteSearch);
+app.patch("/searches/:id", updateSearch);
 
 app.get("/health", healthCheck);
 
