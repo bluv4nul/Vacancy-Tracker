@@ -125,6 +125,11 @@ export const deleteSearch = async (req, res) => {
 };
 
 export const updateSearch = async (req, res) => {
+  if (req.body == undefined) {
+    res.status(400).json({ error: "Body is required!" });
+    return;
+  }
+
   const searchId = Number(req.params.id);
   const userId = req.userId;
 
