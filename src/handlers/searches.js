@@ -125,7 +125,7 @@ export const deleteSearch = async (req, res) => {
 };
 
 export const updateSearch = async (req, res) => {
-  if (req.body == undefined) {
+  if (req.body == undefined || Array.isArray(req.body)) {
     res.status(400).json({ error: "Body is required!" });
     return;
   }
