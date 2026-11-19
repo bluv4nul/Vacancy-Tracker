@@ -49,7 +49,7 @@ export const updateVacancy = async (req, res) => {
     return;
   }
 
-  const statuses = await listStatuses();
+  const statuses = listStatuses();
   if (
     (status != null && !statuses.includes(status)) ||
     (note != null && typeof note != "string") ||
@@ -64,7 +64,7 @@ export const updateVacancy = async (req, res) => {
     return;
   }
 
-  res.json(
+  res.status(200).json(
     await insertOrUpdateUserVacancy(userId, vacancyId, {
       status,
       note,

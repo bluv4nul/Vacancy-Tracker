@@ -3,7 +3,7 @@ import { ApplicationStatus } from "../generated/prisma/enums.ts";
 
 const statuses = Object.values(ApplicationStatus);
 
-export async function listStatuses() {
+export function listStatuses() {
   return statuses;
 }
 
